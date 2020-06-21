@@ -11,21 +11,20 @@ import scipy
 from scipy import integrate
 from mpl_toolkits.mplot3d import axes3d, Axes3D
 import matplotlib.pyplot as plt
-from numba import njit
 from sys import exit
 import tqdm
 # In[]
 # Variables to alter:
-mn_level = 5 # Fourier Transform Variable
+mn_level = 5 
 
 start = -2
 stop = 2.0001
-step =.05 #.00625
+step =.05 
 
 t=1.5
 dt=.003
 
-k = .2
+a = .2
 
 fn = 'Sample4'
 fps = 30
@@ -235,20 +234,20 @@ class HeatEquasion():
                     cf[c_index,row,column] = np.sum(self.coefficent_reduction_factor(cf[c_index,row,column],row,column,self.coeffCalcs.l_x,self.coeffCalcs.l_y))
         return cf
 
-    def coeff_temp_change_calc(self,dt,k):
-        return self.rate_temp_change_calc()*dt*k
+    def coeff_temp_change_calc(self,dt,a):
+        return self.rate_temp_change_calc()*dt*a
 
-    def coeff_temp_change(self,t,dt,k=1):
+    def coeff_temp_change(self,t,dt,a=1):
         heat_equasion_times = []
         for time in np.arange(0,t,dt):
             heat_equasion_times.append(TwoDimFourierEquasion(self.coeffs))
-            self.coeffs = self.coeffs+self.coeff_temp_change_calc(dt,k)
+            self.coeffs = self.coeffs+self.coeff_temp_change_calc(dt,a)
         return heat_equasion_times
     
 # In[] Setup Models
 
 H = HeatEquasion(InitialHeatEquasion,x_start,x_stop,y_start,y_stop,mn_level)
-M = H.coeff_temp_change(t,dt,k)
+M = H.coeff_temp_change(t,dt,a)
 
 # In[] Make Arrays with 2D values
 import tqdm
