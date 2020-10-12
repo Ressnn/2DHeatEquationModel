@@ -1,4 +1,4 @@
-# HeatEquasionModel
+# HeatEquationModel
 A python model of the 2D heat equation
 
 # Usage
