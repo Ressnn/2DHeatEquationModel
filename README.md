@@ -1,49 +1,78 @@
-# HeatEquationModel
-A python model of the 2D heat equation
+# Heat Equation Model in Python
 
-# Usage
-Under the section of code titled variables to alter, change the the variables to the way you want them to be.
-The section should initially look like this :
+`main.py` contains code for a 2D simulation of the heat equation in Python. The simulation now supports rendering with either Matplotlib or PyVista. Example renderings can be seen in the examples folder.
+
+## Installation
+
+To get started with installation, run:
+
 ```
-mn_level = 5 
-
-start = -2
-stop = 2.0001
-step =.05 
-
-t=1.5
-dt=.003
-
-k = .2
-
-fn = 'Sample4'
-fps = 30
-
-#Function here:
-def InitialHeatEquasion(x,y):
-    return np.sin(x+y)
+pip install -r requirements.txt
 ```
-Each variable alters the code like so:
+
+Note that this will install both Matplotlib and PyVista, allowing you to use either renderer.
+
+Important: The `ffmpeg` system package is also required. Install it using your system's package manager:
+
+- Ubuntu/Debian: `sudo apt-get install ffmpeg`
+- macOS with Homebrew: `brew install ffmpeg`
+- Windows: Download from the official FFmpeg website or use a package manager like Chocolatey.
+
+Alternatively, you can use conda/mamba to install the same requirements.
+
+## Usage
+
+The simulation accepts the following command line arguments:
+
 ### Function plotting
-  - mn_level -> the value of m and n of the fourier series (Read about it "How it works") or [here](https://math.stackexchange.com/questions/211689/real-valued-2d-fourier-series)
-  - start -> the value to start plotting the function
-  - stop -> the value to stop plotting the function
-  - step -> the step of the function plot
+- `--fourier_level`: The value of m and n of the Fourier series (default: 5)
+- `--x_start`: Start value for x (default: -2)
+- `--x_stop`: Stop value for x (default: 2.0001)
+- `--y_start`: Start value for y (default: -2)
+- `--y_stop`: Stop value for y (default: 2.0001)
+- `--spatial_step`: Step size for x and y (default: 0.05)
+
 ### Time
-  - t -> the time to stop the simulation
-  - dt -> how much to step the time per frame (higher values might crash or result in odd plots, lower values slower but better)
-### Temprature
-  - a -> the  thermal diffusivity of the material
+- `--total_time`: Total simulation time (default: 0.2)
+- `--time_step`: Time step for each frame (default: 0.003)
+
+### Temperature
+- `--diffusion_coeff`: Diffusion coefficient (thermal diffusivity) of the material (default: 0.2)
+
 ### Saving
-  - fn -> the file name
-  - fps -> frames per second of animation
-### InitialHeatEquasion
-  - This equation determines the initial state of the simulator must take in two parameters (x,y) and return the z coordinate which will be the temprature
+- `--output_filename`: Output filename for the animation (default: "heat_equation_sim")
+- `--fps`: Frames per second of the animation (default: 30)
 
-# How it Works
 
-This program first does a 2D fourier approximation of the the given 2D equation.
-This is because the heat equation takes takes the second derivative of the function and subtracts it from the function.
-With a normal function this would result in a long chain of subtracted derivatives but because the second derivative of a
-fourier coefficent is a multiple of itself (by a decimal factor) it makes it much easier to compute. After the approximation is calculated, at the given mn_level (more on what I did in the second answer [here](https://math.stackexchange.com/questions/211689/real-valued-2d-fourier-series)),
-we then store how the function would morph with the diffusion of heat over time (in the TwoDimFourierEquasion class) and calculate it for exact points last.
+### Renderer
+- `--renderer`: Choose the rendering library ('matplotlib' or 'pyvista', default: 'matplotlib')
+
+Renderer Comparison:
+- Matplotlib:
+  - Slower rendering
+  - Includes axes in the visualization
+
+- PyVista:
+  - Much faster rendering
+  - Does not show axes
+
+### Initial Heat Distribution
+
+The initial temperature distribution is determined by the `initial_temperature_distribution(x, y)` function. To modify the initial state, edit this function in the script (main.py line 44):
+
+```python
+def initial_temperature_distribution(x, y):
+    return np.sin(x + y)
+```
+
+## How it Works
+
+This program first performs a 2D Fourier approximation of the given 2D equation. This approach is used because the heat equation involves taking the second derivative of the function and subtracting it from the function itself.
+
+With a normal function, this would result in a long chain of subtracted derivatives. However, the second derivative of a Fourier coefficient is a multiple of itself (by a decimal factor), which makes it much easier to compute.
+
+After the approximation is calculated at the given Fourier level, we store how the function would morph with the diffusion of heat over time (in the `TwoDimensionalFourierSeries` class) and calculate it for exact points last.
+
+The simulation uses either Matplotlib or PyVista (based on user choice) to render the results, providing a 3D visualization of how the temperature distribution evolves over time.
+
+For more details on the mathematical background, refer to [this Stack Exchange post](https://math.stackexchange.com/questions/211689/real-valued-2d-fourier-series).

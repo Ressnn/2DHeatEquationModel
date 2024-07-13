@@ -17,6 +17,13 @@ import matplotlib.animation as animation
 import argparse
 from tqdm import tqdm
 
+
+try:
+    import pyvista as pv
+    PYVISTA_AVAILABLE = True
+except ImportError:
+    PYVISTA_AVAILABLE = False
+
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Heat Equation Simulation")
     parser.add_argument("--fourier_level", type=int, default=5, help="Fourier series truncation level")
@@ -30,6 +37,8 @@ def parse_arguments():
     parser.add_argument("--diffusion_coeff", type=float, default=0.2, help="Diffusion coefficient")
     parser.add_argument("--output_filename", type=str, default="heat_equation_sim", help="Output filename")
     parser.add_argument("--fps", type=int, default=30, help="Frames per second for the animation")
+    parser.add_argument("--renderer", type=str, choices=['matplotlib', 'pyvista'], default='matplotlib', 
+                    help="Choose the rendering library (default: matplotlib)")
     return parser.parse_args()
 
 def initial_temperature_distribution(x, y):
@@ -97,10 +106,28 @@ class TwoDimensionalFourierSeries:
                       self.coefficients[2] * sin_x * cos_y + self.coefficients[1] * cos_x * sin_y)
 
     def get_temperature_distribution(self, x_start, x_stop, y_start, y_stop, x_step=0.01, y_step=0.01):
-        x_y_grid = np.transpose(np.meshgrid(np.arange(x_start, x_stop, x_step), np.arange(y_start, y_stop, y_step)))
+        x = np.arange(x_start, x_stop, x_step)
+        y = np.arange(y_start, y_stop, y_step)
+        X, Y = np.meshgrid(x, y)
+        
         x_length, y_length = x_stop - x_start, y_stop - y_start
-        return [[(point[0], point[1], self.calculate_point(point[0], point[1], x_length, y_length)) for point in row] for row in x_y_grid]
-
+        
+        if self.n_m_grid is None:
+            self.n_m_grid = np.mgrid[0:self.coefficients.shape[1], 0:self.coefficients.shape[2]]
+        n_m_grid = self.n_m_grid
+        
+        cos_x = np.cos((2 * np.pi * X[:, :, np.newaxis, np.newaxis] / x_length) * n_m_grid[0])
+        cos_y = np.cos((2 * np.pi * Y[:, :, np.newaxis, np.newaxis] / y_length) * n_m_grid[1])
+        sin_x = np.sin((2 * np.pi * X[:, :, np.newaxis, np.newaxis] / x_length) * n_m_grid[0])
+        sin_y = np.sin((2 * np.pi * Y[:, :, np.newaxis, np.newaxis] / y_length) * n_m_grid[1])
+        
+        Z = np.sum(self.coefficients[3] * sin_x * sin_y +
+                   self.coefficients[0] * cos_x * cos_y +
+                   self.coefficients[2] * sin_x * cos_y +
+                   self.coefficients[1] * cos_x * sin_y, axis=(2, 3))
+        
+        return np.dstack((X, Y, Z))
+    
 class HeatEquationSolver:
     def __init__(self, initial_state_function, x_start, x_stop, y_start, y_stop, fourier_level):
         self.coeff_calculator = FourierCoefficientsCalculator(initial_state_function, x_start, x_stop, y_start, y_stop, fourier_level)
@@ -133,6 +160,64 @@ class HeatEquationSolver:
             self.coefficients = self.coefficients + self.calculate_coefficient_change(time_step, diffusion_coeff)
         return temperature_distributions
 
+def render_matplotlib(x, y, temperature_array, args):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    def update_plot(frame_number, temperature_array, plot):
+        plot[0].remove()
+        plot[0] = ax.plot_surface(x, y, temperature_array[:,:,frame_number], cmap="seismic")
+        ax.view_init(elev=50, azim=frame_number * 0.25)
+
+    plot = [ax.plot_surface(x, y, temperature_array[:,:,0], color='0.75', rstride=1, cstride=1)]
+    ax.set_zlim(0, 1.1)
+    ani = animation.FuncAnimation(fig, update_plot, len(temperature_array[0,0]), fargs=(temperature_array, plot), interval=1000/args.fps)
+
+    print("Saving animation with Matplotlib...")
+    ani.save(f"{args.output_filename}.mp4", writer='ffmpeg', fps=args.fps)
+    print("Animation saved successfully.")
+
+def render_pyvista(x, y, temperature_array, args):
+    if not PYVISTA_AVAILABLE:
+        raise ImportError("PyVista is not installed. Please install it with 'pip install pyvista'")
+
+    print("Creating PyVista animation...")
+    
+    # Create a structured grid
+    grid = pv.StructuredGrid(x, y, np.zeros_like(x))
+    
+    # Create a plotter
+    plotter = pv.Plotter(off_screen=True)
+    plotter.open_movie(f"{args.output_filename}.mp4")
+    
+    # Set up the camera
+    #plotter.camera.zoom(1.5)
+    #plotter.camera.elevation += 1
+    first = True
+    # Iterate through frames
+    for i in tqdm(range(len(temperature_array[0,0])), desc="Rendering frames"):
+        # Update z values and scalar data
+            
+
+        grid.points[:, -1] = temperature_array[:,:,i].ravel()
+        grid.point_data["temperature"] = temperature_array[:,:,i].ravel()
+
+        # Clear existing meshes and add the updated surface
+        plotter.clear_actors()
+        plotter.add_mesh(grid, scalars="temperature", show_edges=True)
+        
+        # Update camera angle
+        plotter.camera.azimuth = i * 0.25
+        #plotter.show_grid()
+        
+        # Write the frame
+        plotter.write_frame()
+    
+    # Close the movie
+    plotter.close()
+
+    print("Animation saved successfully.")
+
 def main():
     args = parse_arguments()
 
@@ -147,22 +232,13 @@ def main():
     temperature_array = values[:, 2].T
     x, y = values[0, 0], values[0, 1]
 
-    # Create the animation
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-
-    def update_plot(frame_number, temperature_array, plot):
-        plot[0].remove()
-        plot[0] = ax.plot_surface(x, y, temperature_array[:,:,frame_number], cmap="seismic")
-        ax.view_init(elev=50, azim=frame_number * 0.25)
-
-    plot = [ax.plot_surface(x, y, temperature_array[:,:,0], color='0.75', rstride=1, cstride=1)]
-    ax.set_zlim(0, 1.1)
-    ani = animation.FuncAnimation(fig, update_plot, len(temperature_array[0,0]), fargs=(temperature_array, plot), interval=1000/args.fps)
-
-    print("Saving animation...")
-    ani.save(f"{args.output_filename}.mp4", writer='ffmpeg', fps=args.fps)
-    print("Animation saved successfully.")
+    # Render the animation based on user choice
+    if args.renderer == 'matplotlib':
+        render_matplotlib(x, y, temperature_array, args)
+    elif args.renderer == 'pyvista':
+        render_pyvista(x, y, temperature_array, args)
+    else:
+        raise ValueError(f"Unknown renderer: {args.renderer}")
 
 if __name__ == "__main__":
     main()
