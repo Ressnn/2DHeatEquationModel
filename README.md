@@ -25,7 +25,7 @@ Alternatively, you can use conda/mamba to install the same requirements.
 The simulation accepts the following command line arguments:
 
 ### Function plotting
-- `--fourier_level`: The value of m and n of the Fourier series (default: 5)
+- `--fourier_level`: The the Fourier series approximation level (default: 5)
 - `--x_start`: Start value for x (default: -2)
 - `--x_stop`: Stop value for x (default: 2.0001)
 - `--y_start`: Start value for y (default: -2)
