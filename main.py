@@ -6,7 +6,7 @@ Heat Equation Simulation with Fourier Transform
 
 This script simulates the heat equation using Fourier transforms and creates an animation of the results.
 
-Author: Pranav Devarinti (original), Claude (refactored)
+Author: Pranav Devarinti + Anthropic Claude 3.5 Sonnet
 """
 
 import numpy as np
